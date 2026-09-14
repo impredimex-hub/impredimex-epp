@@ -1557,13 +1557,55 @@ async function guardar(){
 
   try {
     await db.ref('imd_registros').push(rec);
+    // La revisión ya quedó: eso es lo prioritario. La marca de asistencia va
+    // aparte y a propósito no se mete en este try, para que un fallo suyo
+    // nunca tire el guardado de la inspección.
     toast('✅ Registro guardado y sincronizado');
+    marcarAsistencia(trabNomina, trab, depto, now);
     resetForm();
   } catch(e){
     toast('❌ Error al guardar: ' + e.message);
     setSyncState('error','Error al guardar');
   } finally {
     btn.disabled=false; btn.textContent='Guardar registro de revisión';
+  }
+}
+
+/**
+ * Deja constancia en la suite de que esta persona estuvo presente hoy.
+ *
+ * Una revisión de EPP no se le puede hacer a alguien que no vino, así que la
+ * inspección misma es la prueba de asistencia. RRHH lee estos registros para
+ * marcar su rol de turnos (SPEC-014 de RRHH).
+ *
+ * Se escribe en el proyecto de la suite, no aquí, porque es el único terreno
+ * que las dos aplicaciones ya comparten. Va sin foto, sin firma y sin el
+ * detalle del EPP: solo fecha y nómina. Que sea diminuto es intencional; leer
+ * los registros completos desde RRHH acabaría con la cuota del plan gratuito.
+ *
+ * No bloquea el guardado de la revisión, pero si falla lo dice: en silencio,
+ * RRHH daría por ausente a gente que sí vino.
+ */
+async function marcarAsistencia(nomina, nombre, depto, cuando){
+  if(!suiteDb || !nomina) return;
+  const f = cuando || new Date();
+  const p2 = n => String(n).padStart(2,'0');
+  const fecha = f.getFullYear() + '-' + p2(f.getMonth()+1) + '-' + p2(f.getDate());
+  // Un documento por persona y día: si ese día se le hace más de una revisión,
+  // la segunda sobrescribe a la primera en vez de duplicar la asistencia.
+  const id = fecha + '_' + String(nomina).trim();
+  try {
+    await suiteDb.collection('asistencia').doc(id).set({
+      fecha,
+      noNomina: String(nomina).trim(),
+      nombreCompleto: nombre || '',
+      departamento: depto || '',
+      origen: 'EPP',
+      ts: f.getTime()
+    }, { merge: true });
+  } catch(e){
+    console.error('No se pudo marcar la asistencia', e);
+    toast('⚠️ La revisión se guardó, pero la asistencia no llegó a RRHH');
   }
 }
 

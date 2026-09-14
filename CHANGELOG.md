@@ -7,6 +7,32 @@ Versionado según [Versionado Semántico](https://semver.org/lang/es/).
 
 ---
 
+## [Asistencia a RRHH] — 2026-09-14
+
+### Agregado
+
+- **Al guardar una revisión se deja constancia de asistencia.** Se escribe un
+  documento diminuto —fecha, nómina, nombre, departamento— en la colección
+  `asistencia` del proyecto de la suite. RRHH lo lee para marcar su rol de
+  turnos (SPEC-014 de RRHH).
+- Una revisión no se le puede hacer a alguien que no vino, así que la
+  inspección misma es la prueba de que estuvo presente.
+
+### Notas
+
+La marca **no** bloquea el guardado de la revisión: si falla, la inspección se
+guarda igual y aparece una advertencia. Se avisa a propósito, porque en silencio
+RRHH daría por ausente a gente que sí vino.
+
+El documento va sin foto, sin firma y sin el detalle del EPP: que sea diminuto
+es intencional, leer los registros completos desde RRHH acabaría con la cuota
+del plan gratuito.
+
+Requiere que la colección `asistencia` de la suite tenga su regla de escritura
+para EPP.
+
+---
+
 ## [2.0.0] — 2026-09-04
 
 Integración con la suite Impredimex. Es un cambio mayor: desaparecen las
