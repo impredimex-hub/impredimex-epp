@@ -7,6 +7,35 @@ Versionado según [Versionado Semántico](https://semver.org/lang/es/).
 
 ---
 
+## [Encabezado unificado] — 2026-09-16
+
+### Cambiado
+
+- **El encabezado quedó igual al de Recursos Humanos.** La marca y el nombre de
+  la aplicación van centrados; debajo, el nombre y el puesto de quien entró. A
+  la derecha, un círculo azul con la nómina y un botón circular de apagado,
+  con el punto verde y el estado de conexión debajo.
+- La sesión ahora también trae el **puesto** del padrón, que antes no se leía.
+  Si alguien no lo tiene capturado, en su lugar se muestra su papel (Admin o
+  Supervisor), para no dejar el hueco vacío ni desalinear el encabezado.
+
+### Quitado
+
+- El **logotipo** del encabezado, la **fecha** de la esquina derecha, la
+  etiqueta de papel y el enlace de texto **Salir**, que ahora es el botón de
+  apagado. El logotipo de la pantalla de acceso no se tocó.
+
+### Notas
+
+Quitar el logotipo del encabezado adelgazó el archivo unos 25 KB, porque venía
+incrustado en base64.
+
+El papel dejó de verse como etiqueta, pero sigue a la mano: aparece al mantener
+pulsado el círculo de la nómina, que es donde alguien lo busca cuando duda de
+sus permisos.
+
+---
+
 ## [Asistencia a RRHH] — 2026-09-14
 
 ### Agregado
