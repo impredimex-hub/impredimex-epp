@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<!-- Jost, solo para el logotipo del encabezado. Si no carga, el respaldo del
+     sistema conserva el mismo peso y espaciado: cambia la letra, no el acomodo. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@400;600&display=swap">
 <title>IMPREDIMEX — Control de EPP</title>
 
 <!-- PWA: instalable en PC, Android e iOS con su propio icono -->
@@ -180,18 +185,9 @@ body { background:#ffffff; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
   position:fixed; bottom:24px; left:0; right:0;
 }
 
-/* ══ SYNC BADGE ══ */
-.sync-badge {
-  display:inline-flex; align-items:center; gap:5px;
-  font-size:11px; color:#bbb; margin-top:4px;
-}
-.sync-dot {
-  width:7px; height:7px; border-radius:50%; background:#ccc;
-  transition:background .3s;
-}
-.sync-dot.connected { background:#4ADE80; box-shadow:0 0 6px #4ADE80; }
-.sync-dot.syncing   { background:var(--brand-gold); animation:pulse 1s infinite; }
-.sync-dot.error     { background:#c0392b; }
+/* El punto de conexión vive ahora sobre el círculo de la nómina (.hdr-punto).
+   Se conserva la animación porque el estado «syncing» la usa. */
+.hdr-punto.syncing { animation:pulse 1s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
 /* ══ TOP STRIPE ══ */
@@ -199,8 +195,9 @@ body { background:#ffffff; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 
 /* ══ HEADER ══ */
 .hdr {
-  display:flex; align-items:center; gap:12px;
-  padding:.75rem 1.5rem;
+  display:flex; align-items:center; gap:10px;
+  padding:6px 12px;
+  position:relative;
   background:rgba(255,255,255,.88);
   backdrop-filter:blur(16px);
   -webkit-backdrop-filter:blur(16px);
@@ -214,25 +211,75 @@ body { background:#ffffff; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 .app-title { font-size:16px; font-weight:700; color:#002060; letter-spacing:.02em; }
 .app-sub { font-size:10px; color:#9aa; margin-top:2px; letter-spacing:.04em; }
 
-/* Encabezado igualado al de Recursos Humanos: marca y aplicación al centro,
-   debajo quién entró, y a la derecha su nómina con el botón de salida. */
-.hdr-center { flex:1; text-align:center; min-width:0; }
-.hdr-marca  { font-size:20px; font-weight:800; color:var(--brand-navy-dark); letter-spacing:.02em; }
-.hdr-app    { font-size:13px; font-weight:700; color:var(--brand-navy); margin-top:1px; }
-.hdr-nombre { font-size:13px; font-weight:700; color:var(--brand-navy-dark); margin-top:6px;
-              text-transform:uppercase; letter-spacing:.01em;
+/* ── Encabezado estándar de la suite (SPEC-035 de RRHH) ──────────────────
+   Alineado a la izquierda: centrarlo lo hacía pelear con los botones y en el
+   teléfono quedaba corrido. El nombre y el puesto solo caben en pantalla
+   ancha; en el teléfono viven en el panel que abre la nómina, donde tienen
+   el ancho completo y no se cortan. */
+.hdr-marca {
+  font-family:'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight:600; color:var(--brand-navy-dark); letter-spacing:.20em;
+  line-height:1.15; font-size:15px;
+}
+.hdr-app {
+  font-family:'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight:400; color:#5A6A80; letter-spacing:.26em; line-height:1.3;
+  margin-top:4px; font-size:9px; text-transform:uppercase;
+}
+.hdr-identidad { display:none; min-width:0; text-align:right; flex:1; }
+.hdr-nombre { font-size:13px; font-weight:700; color:var(--brand-navy-dark);
+              line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hdr-puesto { font-size:11.5px; color:#8A9AB0; line-height:1.3;
               white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.hdr-puesto { font-size:12px; color:#8A9AB0; text-transform:uppercase; letter-spacing:.01em;
-              white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.hdr-r      { display:flex; flex-direction:column; align-items:center; gap:5px; flex-shrink:0; }
-.hdr-r-row  { display:flex; align-items:center; gap:10px; }
-.hdr-nomina { background:var(--brand-navy); color:#fff; width:46px; height:46px; border-radius:50%;
-              display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; }
-.hdr-salir  { width:46px; height:46px; border-radius:50%; background:transparent;
-              border:1px solid rgba(0,32,96,.15); color:var(--brand-navy); display:flex;
-              align-items:center; justify-content:center; cursor:pointer;
-              font-family:inherit; padding:0; }
-.hdr-salir:hover { background:rgba(0,32,96,.05); }
+
+@media (min-width:760px){
+  .hdr-marca{ font-size:22px; }
+  .hdr-app  { font-size:10.5px; margin-top:5px; }
+  .hdr-identidad{ display:block; }
+}
+
+/* El círculo se ve de 32 px pero la zona que responde al dedo mide 44: con
+   guantes, 32 px se falla. */
+.hdr-boton {
+  width:44px; height:44px; background:transparent; border:none; padding:0;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  text-decoration:none; flex-shrink:0;
+}
+.hdr-boton > span {
+  width:32px; height:32px; border-radius:50%; border:1px solid rgba(0,32,96,.15);
+  color:var(--brand-navy); display:flex; align-items:center; justify-content:center;
+  transition:background .15s ease;
+}
+.hdr-boton:hover > span { background:#E8EEF8; }
+
+.hdr-avatar { position:relative; width:34px; height:34px; display:block; }
+.hdr-nomina { background:var(--brand-navy); color:#fff; width:34px; height:34px;
+              border-radius:50%; display:flex; align-items:center; justify-content:center;
+              font-weight:800; font-size:11.5px; }
+/* El estado de conexión va sobre la nómina y no en su propio renglón: ahorra
+   un renglón entero de alto en el teléfono. */
+.hdr-punto { position:absolute; right:-1px; bottom:-1px; width:10px; height:10px;
+             border-radius:50%; border:2px solid #fff; display:block; background:#8A9AB0; }
+.hdr-punto.connected { background:#0F7A55; }
+.hdr-punto.syncing   { background:var(--brand-gold); }
+.hdr-punto.error     { background:var(--brand-red); }
+
+/* Panel de la sesión */
+.hdr-panel { position:absolute; right:12px; top:100%; margin-top:4px; z-index:41;
+             width:250px; background:#fff; border-radius:14px;
+             box-shadow:0 2px 8px rgba(0,32,96,.10), 0 12px 32px rgba(0,32,96,.14);
+             padding:14px 15px; text-align:left; }
+.hdr-panel-nombre { font-size:13px; font-weight:700; color:var(--brand-navy-dark); line-height:1.35; }
+.hdr-panel-puesto { font-size:11.5px; color:#5A6A80; line-height:1.4; margin-top:2px; }
+.hdr-panel-meta   { display:flex; align-items:center; flex-wrap:wrap; gap:6px;
+                    margin-top:8px; font-size:11px; color:#5A6A80; }
+.hdr-panel-sep    { height:1px; background:rgba(0,32,96,.10); margin:12px 0; }
+.hdr-panel-item   { display:flex; align-items:center; gap:9px; min-height:44px; width:100%;
+                    background:transparent; border:none; padding:0; font-family:inherit;
+                    font-size:12.5px; font-weight:600; text-align:left; cursor:pointer;
+                    color:var(--brand-navy); text-decoration:none; }
+.hdr-panel-item.salir { color:#9B0E24; }
+.hdr-capa { position:fixed; inset:0; z-index:40; }
 
 /* ══ APP ══ */
 .app { max-width:980px; margin:0 auto; padding:0 1rem 1.5rem; }
@@ -438,12 +485,6 @@ textarea { resize:vertical; min-height:70px; }
   .metrics{grid-template-columns:1fr 1fr;}
   .app-title{font-size:14px;}
   .hdr{padding:.65rem .75rem; gap:8px;}
-  .hdr-marca{font-size:16px;}
-  .hdr-app{font-size:11px;}
-  .hdr-nombre{font-size:11px;}
-  .hdr-puesto{font-size:10px;}
-  .hdr-nomina,.hdr-salir{width:38px;height:38px;}
-  .hdr-nomina{font-size:13px;}
 }
 </style>
 </head>
@@ -538,29 +579,69 @@ textarea { resize:vertical; min-height:70px; }
 <div class="top-stripe"></div>
 <div class="hdr">
 
-  <!-- Bloque central: marca, aplicación y quién entró -->
-  <div class="hdr-center">
+  <!-- Marca y aplicación, a la izquierda -->
+  <div style="flex-shrink:0">
     <div class="hdr-marca">IMPREDIMEX</div>
-    <div class="hdr-app">Control de EPP y BPM's</div>
+    <div class="hdr-app">Equipo de Protección</div>
+  </div>
+
+  <!-- Quién entró: solo en pantalla ancha -->
+  <div class="hdr-identidad">
     <div class="hdr-nombre" id="hdr-nombre">&nbsp;</div>
     <div class="hdr-puesto" id="hdr-puesto">&nbsp;</div>
   </div>
 
-  <!-- Bloque derecho: nómina, salida y estado de conexión -->
-  <div class="hdr-r">
-    <div class="hdr-r-row">
-      <div class="hdr-nomina" id="hdr-nomina" title="Nómina"></div>
-      <button class="hdr-salir" onclick="salir()" title="Cerrar sesión" aria-label="Cerrar sesión">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  <div style="flex:1"></div>
+
+  <div style="display:flex;align-items:center;gap:2px;flex-shrink:0">
+    <a href="https://impredimex-hub.github.io/" class="hdr-boton" title="Volver al portal" aria-label="Volver al portal">
+      <span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line>
+          <rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect>
+          <rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect>
         </svg>
-      </button>
-    </div>
-    <div class="sync-badge">
-      <div class="sync-dot" id="sync-dot"></div>
+      </span>
+    </a>
+
+    <button type="button" onclick="togglePanelSesion()" aria-label="Tu sesión" aria-expanded="false"
+            id="hdr-avatar-btn"
+            style="width:44px;height:44px;background:transparent;border:none;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">
+      <span class="hdr-avatar">
+        <span class="hdr-nomina" id="hdr-nomina" title="Nómina"></span>
+        <span class="hdr-punto" id="sync-dot" title="Conectando…"></span>
+      </span>
+    </button>
+  </div>
+
+  <!-- Panel de la sesión. Aquí el nombre y el puesto tienen ancho completo y
+       pueden ocupar dos renglones: ninguno se corta, mida lo que mida. -->
+  <div class="hdr-capa" id="hdr-capa" style="display:none" onclick="togglePanelSesion()"></div>
+  <div class="hdr-panel" id="hdr-panel" style="display:none">
+    <div class="hdr-panel-nombre" id="panel-nombre"></div>
+    <div class="hdr-panel-puesto" id="panel-puesto"></div>
+    <div class="hdr-panel-meta">
+      <span class="hdr-punto" id="panel-punto" style="position:static;border:none;width:7px;height:7px"></span>
       <span id="sync-label">Conectando…</span>
+      <span style="color:rgba(0,32,96,.18)">|</span>
+      <span id="panel-nomina"></span>
     </div>
+    <div class="hdr-panel-sep"></div>
+    <a href="https://impredimex-hub.github.io/" class="hdr-panel-item">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect>
+      </svg>
+      Ir al portal
+    </a>
+    <button type="button" class="hdr-panel-item salir" onclick="salir()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line>
+      </svg>
+      Cerrar sesión
+    </button>
   </div>
 </div>
 
@@ -1026,6 +1107,24 @@ function mostrarApp(){
   ofrecerBiometria();
 }
 
+/**
+ * Abre y cierra el panel de la sesión.
+ *
+ * En el teléfono es el único lugar donde el nombre y el puesto caben
+ * completos: el caso más largo del padrón pasa de setenta caracteres y en la
+ * barra se cortaría.
+ */
+function togglePanelSesion(){
+  const panel = document.getElementById('hdr-panel');
+  const capa  = document.getElementById('hdr-capa');
+  const btn   = document.getElementById('hdr-avatar-btn');
+  if(!panel) return;
+  const abierto = panel.style.display === 'block';
+  panel.style.display = abierto ? 'none' : 'block';
+  if(capa) capa.style.display = abierto ? 'none' : 'block';
+  if(btn) btn.setAttribute('aria-expanded', abierto ? 'false' : 'true');
+}
+
 async function salir(){
   try { await firebase.auth().signOut(); } catch(e){}
   try { await suiteAuth.signOut(); } catch(e){}
@@ -1220,6 +1319,13 @@ function applyRole(){
       nom.textContent = sesion.nomina;
       nom.title = 'Nómina ' + sesion.nomina + ' · ' + papel;
     }
+    // El panel repite los mismos datos, pero sin recortarlos.
+    const pNombre = document.getElementById('panel-nombre');
+    const pPuesto = document.getElementById('panel-puesto');
+    const pNomina = document.getElementById('panel-nomina');
+    if(pNombre) pNombre.textContent = sesion.nombre;
+    if(pPuesto) pPuesto.textContent = sesion.puesto || papel;
+    if(pNomina) pNomina.textContent = 'Nómina ' + sesion.nomina + ' · ' + papel;
   }
 }
 
@@ -1414,10 +1520,14 @@ function limpiarBusquedaTrabajador(){
 }
 
 function setSyncState(state, label){
+  // El punto va sobre el círculo de la nómina, y se repite dentro del panel
+  // para que quien lo abra vea el estado sin cerrarlo.
   const dot = document.getElementById('sync-dot');
+  const dot2 = document.getElementById('panel-punto');
   const lbl = document.getElementById('sync-label');
-  dot.className = 'sync-dot ' + state;
-  lbl.textContent = label;
+  if(dot){ dot.className = 'hdr-punto ' + state; dot.title = label; }
+  if(dot2) dot2.className = 'hdr-punto ' + state;
+  if(lbl) lbl.textContent = label;
 }
 function updateLastSync(){
   const el = document.getElementById('last-sync-lbl');
