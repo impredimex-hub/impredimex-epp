@@ -197,7 +197,9 @@ body { background:#ffffff; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 .hdr {
   display:flex; align-items:center; gap:10px;
   padding:6px 12px;
-  position:relative;
+  /* Fijo arriba, siempre visible. Capa 45: por encima de los menús del
+     contenido y por debajo de todas las ventanas emergentes (500 en adelante). */
+  position:sticky; top:0; z-index:45;
   /* Opaco y sin desenfoque: el encabezado no está fijo, así que el efecto de
      cristal no tenía nada detrás que desenfocar. Lo único que hacía era dejar
      pasar el fondo y, en iOS, lavar el logotipo. */
@@ -226,7 +228,10 @@ body { background:#ffffff; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
   font-weight:400; color:#5A6A80; letter-spacing:.26em; line-height:1.3;
   margin-top:4px; font-size:9px; text-transform:uppercase;
 }
-.hdr-identidad { display:none; min-width:0; text-align:right; flex:1; }
+/* Centrado: nombre y puesto comparten eje, no orilla. Las dos orillas del
+   encabezado crecen igual, así esto queda en medio de la pantalla. */
+.hdr-identidad { display:none; min-width:0; text-align:center; flex:0 1 auto; }
+.hdr-orilla    { flex:1 1 0; }
 .hdr-nombre { font-size:13px; font-weight:700; color:var(--brand-navy-dark);
               line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .hdr-puesto { font-size:11.5px; color:#8A9AB0; line-height:1.3;
@@ -580,7 +585,7 @@ textarea { resize:vertical; min-height:70px; }
 <div class="hdr">
 
   <!-- Marca y aplicación, a la izquierda -->
-  <div style="flex-shrink:0">
+  <div class="hdr-orilla">
     <div class="hdr-marca">IMPREDIMEX</div>
     <div class="hdr-app">Equipo de Protección</div>
   </div>
@@ -591,9 +596,7 @@ textarea { resize:vertical; min-height:70px; }
     <div class="hdr-puesto" id="hdr-puesto">&nbsp;</div>
   </div>
 
-  <div style="flex:1"></div>
-
-  <div style="display:flex;align-items:center;gap:2px;flex-shrink:0">
+  <div class="hdr-orilla" style="display:flex;align-items:center;justify-content:flex-end;gap:2px">
     <a href="https://impredimex-hub.github.io/" class="hdr-boton" title="Volver al portal" aria-label="Volver al portal">
       <span>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
