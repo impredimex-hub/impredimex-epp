@@ -198,12 +198,12 @@ body { background:#ffffff; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
   display:flex; align-items:center; gap:10px;
   padding:6px 12px;
   position:relative;
-  background:rgba(255,255,255,.88);
-  backdrop-filter:blur(16px);
-  -webkit-backdrop-filter:blur(16px);
+  /* Opaco y sin desenfoque: el encabezado no está fijo, así que el efecto de
+     cristal no tenía nada detrás que desenfocar. Lo único que hacía era dejar
+     pasar el fondo y, en iOS, lavar el logotipo. */
+  background:#ffffff;
   border-bottom:0.5px solid rgba(0,32,96,.08);
-  border:1px solid rgba(255,255,255,.98); outline:0.5px solid rgba(0,32,96,.06);
-  box-shadow:0 0 0 0.5px rgba(0,32,96,.05), 0 2px 8px rgba(0,32,96,.05), 0 8px 24px rgba(0,32,96,.06), inset 0 1px 1px rgba(255,255,255,1), inset 1px 0 1px rgba(255,255,255,.9), inset -1px 0 1px rgba(255,255,255,.9), inset 0 -1px 1px rgba(0,32,96,.03);
+  box-shadow:0 2px 8px rgba(0,32,96,.05);
   margin-bottom:1rem;
 }
 .hdr-l { display:flex; align-items:center; gap:14px; }
