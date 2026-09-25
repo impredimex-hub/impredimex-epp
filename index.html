@@ -655,7 +655,36 @@ textarea { resize:vertical; min-height:70px; }
 
   <!-- Panel de la sesión. Aquí el nombre y el puesto tienen ancho completo y
        pueden ocupar dos renglones: ninguno se corta, mida lo que mida. -->
-  <div class="hdr-capa" id="hdr-capa" style="display:none" onclick="togglePanelSesion()"></div>
+  <!-- ══════════ REPORTE DE FALTAS (SPEC-047) ══════════
+     Se abre al entrar, antes de revisar. La falta deja de deducirse de las
+     revisiones y pasa a ser un dato que alguien reporta. -->
+<div id="faltas-capa" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,32,96,.55);align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:420px;max-height:88vh;overflow-y:auto;padding:20px;box-shadow:0 12px 40px rgba(0,32,96,.3)">
+    <div style="font-size:15px;font-weight:700;color:var(--brand-navy);margin-bottom:4px">Reporte de faltas</div>
+    <div id="faltas-sub" style="font-size:11.5px;color:var(--text-light);line-height:1.5;margin-bottom:14px"></div>
+
+    <!-- Lo ya reportado hoy por esta persona: evita duplicar al volver a abrir -->
+    <div id="faltas-lista" style="display:none;margin-bottom:14px"></div>
+
+    <label style="font-size:10px;font-weight:bold;color:var(--brand-navy);text-transform:uppercase">¿Quién faltó?</label>
+    <div style="position:relative">
+      <input id="faltas-busca" type="text" autocomplete="off" placeholder="Nombre o nómina…"
+             oninput="buscarParaFalta()" style="width:100%;margin-top:4px">
+      <div id="faltas-sugerencias" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:5;background:#fff;border:1px solid var(--border-mid);border-radius:10px;margin-top:3px;max-height:190px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,32,96,.16)"></div>
+    </div>
+    <div id="faltas-elegido" style="display:none;font-size:12px;color:var(--brand-navy-dark);font-weight:600;margin-top:8px"></div>
+
+    <div style="display:flex;gap:10px;margin-top:18px">
+      <button type="button" onclick="terminarReporteFaltas()"
+              style="flex:1;min-height:46px;border-radius:10px;border:1px solid var(--brand-navy);background:#fff;color:var(--brand-navy);font-weight:600;font-size:13px;font-family:inherit;cursor:pointer">Terminar</button>
+      <button type="button" id="faltas-continuar" onclick="continuarReporteFaltas()" disabled
+              style="flex:1.3;min-height:46px;border-radius:10px;border:none;background:var(--brand-navy);color:#fff;font-weight:700;font-size:13px;font-family:inherit;cursor:pointer;opacity:.45">Continuar</button>
+    </div>
+    <div id="faltas-error" style="font-size:11px;color:var(--brand-red);line-height:1.5;margin-top:10px"></div>
+  </div>
+</div>
+
+<div class="hdr-capa" id="hdr-capa" style="display:none" onclick="togglePanelSesion()"></div>
   <div class="hdr-panel" id="hdr-panel" style="display:none">
     <div class="hdr-panel-nombre" id="panel-nombre"></div>
     <div class="hdr-panel-puesto" id="panel-puesto"></div>
@@ -1093,7 +1122,17 @@ async function prepararSesion(user){
     depto:  c.departamento || '',
     // El encabezado lo muestra debajo del nombre, igual que Recursos Humanos.
     puesto: (c.puesto || '').trim(),
-    rol:    (c.roles || {})[APP_ID] || 'SUPERVISOR'
+    rol:    (c.roles || {})[APP_ID] || 'SUPERVISOR',
+    /* Áreas que supervisa (SPEC-046 de RRHH). Es distinto de su departamento:
+       los supervisores de impresión pertenecen a OPERACIONES y tienen a cargo
+       FLEXOGRAFÍA y ROTOGRABADO. Sin áreas asignadas se cae a su propia área,
+       para que nadie quede sin poder reportar. */
+    areas: (function(){
+      var a = (c.areasACargo || c.departamentosTurnos || [])
+                .map(function(d){ return String(d).trim().toUpperCase(); })
+                .filter(Boolean);
+      return a.length ? a : [String(c.departamento || '').trim().toUpperCase()].filter(Boolean);
+    })()
   };
   currentRole = sesion.rol;
   await cargarPersonal();
@@ -1139,6 +1178,8 @@ function mostrarApp(){
   document.getElementById('lock-screen').style.display = 'none';
   document.getElementById('app-wrapper').style.display = 'block';
   arranqueListo(true);
+  // El reporte de faltas va antes de revisar: es lo primero del turno.
+  abrirReporteFaltas();
   document.getElementById('sup-input').value = sesion.nombre;
   document.getElementById('sup-disp').textContent = sesion.nombre;
   const link = document.getElementById('rrhh-link');
@@ -2357,6 +2398,192 @@ function showTab(name){
   if(name==='historial'){ renderHistorial(); cargarPrimeros(); }
   if(name==='catalogo')  renderEPPCatalog();
   if(name==='exportar')  setExpSemana();
+}
+
+/* ══════════ REPORTE DE FALTAS (SPEC-047) ══════════════════════════════════
+   La falta deja de deducirse de las revisiones de EPP y pasa a ser un dato
+   que alguien reporta. Eso quita las faltas falsas de los días sin revisión,
+   y le ahorra a RRHH leer miles de asistencias para contarlas: un mes son
+   treinta documentos.
+
+   Se guarda un documento por día, con las faltas de todas las áreas adentro y
+   cada una bajo la nómina de quien faltó. Así dos supervisores reportando al
+   mismo tiempo no se pisan, y reportar dos veces a la misma persona sobrescribe
+   su renglón en lugar de duplicarlo. */
+
+let _faltaElegida = null;
+let _faltasDeHoy  = {};
+
+function fechaHoyISO(){
+  const d = new Date();
+  const dos = n => String(n).padStart(2,'0');
+  return d.getFullYear() + '-' + dos(d.getMonth()+1) + '-' + dos(d.getDate());
+}
+
+/** El turno según el reloj, con el mismo criterio que la revisión. */
+function turnoAhora(){
+  const m = new Date().getHours()*60 + new Date().getMinutes();
+  if(m >= 360 && m < 840)  return 'Matutino';
+  if(m >= 840 && m < 1290) return 'Vespertino';
+  return 'Nocturno';
+}
+
+/** A quién puede reportar: su gente, o cualquiera si es administrador. */
+function genteQuePuedeReportar(){
+  if(!sesion) return [];
+  if(currentRole === 'ADMIN') return colaboradores;
+  const areas = sesion.areas || [];
+  return colaboradores.filter(c => areas.includes(String(c.depto||'').trim().toUpperCase()));
+}
+
+async function abrirReporteFaltas(){
+  const capa = document.getElementById('faltas-capa');
+  if(!capa || !sesion) return;
+
+  _faltaElegida = null;
+  document.getElementById('faltas-busca').value = '';
+  document.getElementById('faltas-elegido').style.display = 'none';
+  document.getElementById('faltas-error').textContent = '';
+  habilitarContinuar(false);
+
+  const areas = (currentRole === 'ADMIN') ? ['todas las áreas'] : (sesion.areas || []);
+  document.getElementById('faltas-sub').textContent =
+    'Antes de revisar: ¿faltó alguien hoy en ' + (areas.length ? areas.join(', ') : 'tu área') + '?';
+
+  capa.style.display = 'flex';
+
+  /* Lo ya reportado hoy, para no duplicar al volver a abrir. Es **una** lectura
+     por apertura; la alternativa —deducir la falta— eran miles. */
+  try {
+    const snap = await suiteDb.collection('faltas').doc(fechaHoyISO()).get();
+    _faltasDeHoy = (snap.exists ? (snap.data().reportes || {}) : {});
+  } catch(e){
+    _faltasDeHoy = {};
+    console.warn('No se pudo leer lo reportado hoy:', e);
+  }
+  pintarReportadasHoy();
+}
+
+function pintarReportadasHoy(){
+  const caja = document.getElementById('faltas-lista');
+  if(!caja) return;
+  const mias = Object.values(_faltasDeHoy)
+    .filter(r => r && r.porNomina === sesion.nomina)
+    .sort((a,b) => String(a.nombre||'').localeCompare(String(b.nombre||''),'es'));
+  if(!mias.length){ caja.style.display = 'none'; caja.innerHTML = ''; return; }
+  caja.style.display = 'block';
+  caja.innerHTML = '<div style="font-size:10px;font-weight:bold;color:var(--brand-navy);text-transform:uppercase;margin-bottom:5px">Ya reportaste hoy</div>'
+    + mias.map(r => '<div style="font-size:11.5px;color:var(--text-primary);background:var(--bg-light);border-radius:8px;padding:6px 9px;margin-bottom:4px">'
+        + '<b>' + String(r.nomina||'') + '</b> · ' + String(r.nombre||'') + '</div>').join('');
+}
+
+function habilitarContinuar(activo){
+  const b = document.getElementById('faltas-continuar');
+  if(!b) return;
+  b.disabled = !activo;
+  b.style.opacity = activo ? 1 : .45;
+  b.style.cursor  = activo ? 'pointer' : 'not-allowed';
+}
+
+function buscarParaFalta(){
+  const caja = document.getElementById('faltas-sugerencias');
+  const txt  = (document.getElementById('faltas-busca').value || '').trim().toLowerCase();
+  _faltaElegida = null;
+  document.getElementById('faltas-elegido').style.display = 'none';
+  habilitarContinuar(false);
+
+  if(txt.length < 2){ caja.style.display = 'none'; return; }
+
+  const halladas = genteQuePuedeReportar().filter(c =>
+    String(c.nombre||'').toLowerCase().includes(txt) || String(c.nomina||'').includes(txt)
+  ).slice(0, 8);
+
+  if(!halladas.length){
+    caja.style.display = 'block';
+    caja.innerHTML = '<div style="padding:10px;font-size:11.5px;color:var(--text-light)">Nadie de tu área con ese nombre.</div>';
+    return;
+  }
+  caja.style.display = 'block';
+  caja.innerHTML = halladas.map(c =>
+    '<div onclick="elegirParaFalta(\'' + c.nomina + '\')" style="padding:9px 11px;cursor:pointer;border-bottom:1px solid var(--border-light);font-size:12px">'
+    + '<b>' + c.nomina + '</b> · ' + c.nombre
+    + (_faltasDeHoy[c.nomina] ? ' <span style="color:var(--brand-red);font-size:10px">(ya reportado)</span>' : '')
+    + '<div style="font-size:10px;color:var(--text-light)">' + (c.depto||'') + '</div></div>'
+  ).join('');
+}
+
+function elegirParaFalta(nomina){
+  const c = colaboradores.find(x => x.nomina === nomina);
+  if(!c) return;
+  _faltaElegida = c;
+  document.getElementById('faltas-sugerencias').style.display = 'none';
+  document.getElementById('faltas-busca').value = c.nombre;
+  const el = document.getElementById('faltas-elegido');
+  el.style.display = 'block';
+  el.textContent = 'Se reportará: ' + c.nomina + ' · ' + c.nombre;
+  habilitarContinuar(true);
+}
+
+/** Guarda a quien está elegido y deja el campo listo para el siguiente. */
+async function continuarReporteFaltas(){
+  if(!_faltaElegida) return;
+  const c = _faltaElegida;
+  habilitarContinuar(false);
+  document.getElementById('faltas-error').textContent = '';
+  try {
+    const registro = {
+      nomina: c.nomina,
+      nombre: c.nombre,
+      area:   String(c.depto||'').trim().toUpperCase(),
+      turno:  turnoAhora(),
+      porNomina: sesion.nomina,
+      porNombre: sesion.nombre,
+      reportadoEn: new Date().toISOString()
+    };
+    const fecha = fechaHoyISO();
+    await suiteDb.collection('faltas').doc(fecha).set({
+      fecha: fecha,
+      reportes: { [c.nomina]: registro }
+    }, { merge: true });
+
+    _faltasDeHoy[c.nomina] = registro;
+    pintarReportadasHoy();
+    toast('✔️ Falta reportada: ' + c.nombre);
+  } catch(e){
+    document.getElementById('faltas-error').textContent = 'No se pudo guardar: ' + (e.message || 'error desconocido');
+    habilitarContinuar(true);
+    return;
+  }
+  _faltaElegida = null;
+  document.getElementById('faltas-busca').value = '';
+  document.getElementById('faltas-elegido').style.display = 'none';
+  document.getElementById('faltas-busca').focus();
+}
+
+/**
+ * Cierra el reporte. Si no se reportó a nadie, **queda constancia de que no
+ * hubo faltas**: sin eso no habría forma de distinguir un día limpio de un día
+ * en que nadie reportó, y el reporte de RRHH perdería sentido.
+ */
+async function terminarReporteFaltas(){
+  const capa = document.getElementById('faltas-capa');
+  const yaReporte = Object.values(_faltasDeHoy).some(r => r && r.porNomina === sesion.nomina);
+
+  if(!yaReporte){
+    try {
+      const fecha = fechaHoyISO();
+      const sin = {};
+      (currentRole === 'ADMIN' ? ['TODAS'] : (sesion.areas || [])).forEach(function(a){
+        sin[a] = { porNomina: sesion.nomina, porNombre: sesion.nombre, turno: turnoAhora(), reportadoEn: new Date().toISOString() };
+      });
+      if(Object.keys(sin).length){
+        await suiteDb.collection('faltas').doc(fecha).set({ fecha: fecha, sinFaltas: sin }, { merge: true });
+      }
+    } catch(e){
+      console.warn('No se pudo registrar «sin faltas»:', e);
+    }
+  }
+  if(capa) capa.style.display = 'none';
 }
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);}
