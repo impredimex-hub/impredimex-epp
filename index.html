@@ -2414,8 +2414,25 @@ function showTab(name){
 let _faltaElegida = null;
 let _faltasDeHoy  = {};
 
-function fechaHoyISO(){
+/**
+ * La fecha a la que pertenece el turno en curso (SPEC-047).
+ *
+ * El nocturno va de 21:30 a 6:00 y cruza la medianoche: una falta reportada a
+ * la una de la mañana es del turno que empezó **el día anterior**. Sin esto,
+ * esa falta se archivaría en un día en el que esa persona ni siquiera tenía
+ * turno asignado, y el rol la mostraría descuadrada.
+ */
+/**
+ * La fecha a la que pertenece el turno en curso, no la del reloj.
+ *
+ * El nocturno va de 21:30 a 6:00 y cruza la medianoche, pero en el rol de
+ * turnos pertenece al día en que **empezó**. Sin esto, reportar a la una de la
+ * mañana archivaría la falta en el día siguiente, y el rol diría que esa
+ * persona faltó un día en que ni siquiera tenía turno asignado.
+ */
+function fechaDeTurno(){
   const d = new Date();
+  if(d.getHours() < 6) d.setDate(d.getDate() - 1);
   const dos = n => String(n).padStart(2,'0');
   return d.getFullYear() + '-' + dos(d.getMonth()+1) + '-' + dos(d.getDate());
 }
@@ -2455,7 +2472,7 @@ async function abrirReporteFaltas(){
   /* Lo ya reportado hoy, para no duplicar al volver a abrir. Es **una** lectura
      por apertura; la alternativa —deducir la falta— eran miles. */
   try {
-    const snap = await suiteDb.collection('faltas').doc(fechaHoyISO()).get();
+    const snap = await suiteDb.collection('faltas').doc(fechaDeTurno()).get();
     _faltasDeHoy = (snap.exists ? (snap.data().reportes || {}) : {});
   } catch(e){
     _faltasDeHoy = {};
@@ -2540,7 +2557,7 @@ async function continuarReporteFaltas(){
       porNombre: sesion.nombre,
       reportadoEn: new Date().toISOString()
     };
-    const fecha = fechaHoyISO();
+    const fecha = fechaDeTurno();
     await suiteDb.collection('faltas').doc(fecha).set({
       fecha: fecha,
       reportes: { [c.nomina]: registro }
@@ -2571,7 +2588,7 @@ async function terminarReporteFaltas(){
 
   if(!yaReporte){
     try {
-      const fecha = fechaHoyISO();
+      const fecha = fechaDeTurno();
       const sin = {};
       (currentRole === 'ADMIN' ? ['TODAS'] : (sesion.areas || [])).forEach(function(a){
         sin[a] = { porNomina: sesion.nomina, porNombre: sesion.nombre, turno: turnoAhora(), reportadoEn: new Date().toISOString() };
