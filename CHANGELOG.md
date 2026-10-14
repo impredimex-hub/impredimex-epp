@@ -7,6 +7,22 @@ Versionado según [Versionado Semántico](https://semver.org/lang/es/).
 
 ---
 
+## [Listas de búsqueda completas] — 2026-10-14
+
+### Corregido
+
+- **La lista de «Trabajador revisado» quedaba tapada** por la tarjeta de
+  Equipo de protección personal. Cada tarjeta tiene efecto de vidrio
+  (`backdrop-filter`), que la vuelve una capa propia, y la siguiente se
+  pintaba encima de la lista. Ahora la tarjeta con el buscador activo se sube
+  por encima de las demás.
+- **La lista de «¿Quién faltó?» se cortaba** a una opción y media dentro del
+  Reporte de faltas. La ventana tiene desplazamiento propio y recortaba la
+  lista flotante. Ahora la lista va dentro de la ventana y la ventana crece
+  para mostrarla.
+
+---
+
 ## [Encabezado unificado] — 2026-09-16
 
 ### Cambiado

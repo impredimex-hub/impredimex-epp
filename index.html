@@ -371,6 +371,11 @@ textarea { resize:vertical; min-height:70px; }
 
 /* ══ AUTOCOMPLETE ══ */
 .ac-wrap { position:relative; }
+/* Cada .card tiene backdrop-filter, y eso la vuelve un contexto de apilado
+   propio: el z-index de la lista no puede pasar por encima de la tarjeta
+   siguiente, que se pintaba encima y la tapaba. La tarjeta que tiene el foco
+   (la del buscador abierto) se sube por encima de sus vecinas. */
+.card:focus-within { position:relative; z-index:20; }
 .ac-list { position:absolute; top:calc(100% + 4px); left:0; right:0; background:var(--bg-primary); border:1.5px solid var(--brand-navy); border-radius:var(--radius-md); z-index:100; max-height:240px; overflow-y:auto; display:none; box-shadow:var(--shadow-md); }
 .ac-item { display:flex; align-items:center; justify-content:space-between; padding:9px 13px; cursor:pointer; font-size:13px; color:var(--text-primary); user-select:none; border-bottom:1px solid var(--border-light); }
 .ac-item:last-child { border-bottom:none; }
@@ -670,7 +675,10 @@ textarea { resize:vertical; min-height:70px; }
     <div style="position:relative">
       <input id="faltas-busca" type="text" autocomplete="off" placeholder="Nombre o nómina…"
              oninput="buscarParaFalta()" style="width:100%;margin-top:4px">
-      <div id="faltas-sugerencias" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:5;background:#fff;border:1px solid var(--border-mid);border-radius:10px;margin-top:3px;max-height:190px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,32,96,.16)"></div>
+      <!-- La lista va en el flujo y no flotando: la ventana tiene scroll propio
+           y recortaba una lista flotante a una opción y media. Así la
+           ventana crece para mostrarla completa. -->
+      <div id="faltas-sugerencias" style="display:none;background:#fff;border:1px solid var(--border-mid);border-radius:10px;margin-top:4px;max-height:240px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,32,96,.12)"></div>
     </div>
     <div id="faltas-elegido" style="display:none;font-size:12px;color:var(--brand-navy-dark);font-weight:600;margin-top:8px"></div>
 
